@@ -1,10 +1,15 @@
 pipeline {
     agent any 
     stages {
+        stage('checkout scm'){
+            steps{
+                checkout scmGit(branches: [[name: '*/master']], extensions: [], userRemoteConfigs: [[credentialsId: '134af28f-bfc1-43b0-83a6-01ce48185589', url: 'https://github.com/GouthamKarthikeyan/altiflask.git']])
+            }
+        }
         stage('Build') { 
             steps {
-                sh 'python -m py_compile app.py' 
-                stash(name: 'compiled-results', includes: 'app.py') 
+                git branch: 'master', url: 'https://github.com/GouthamKarthikeyan/altiflask.git'
+                sh 'python3 app.py'
             }
         }
     }
