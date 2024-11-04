@@ -1,21 +1,44 @@
 pipeline {
     agent any 
+
+    parameters {
+        string (name: 'ORG_NAME', defaultValue: 'ABC', description: 'Enter the org name')
+    }
+    
     stages {
-        stage('checkout scm'){
+        stage('Create Namespaces'){
             steps{
-                checkout scmGit(branches: [[name: '*/master']], extensions: [], userRemoteConfigs: [[credentialsId: '134af28f-bfc1-43b0-83a6-01ce48185589', url: 'https://github.com/GouthamKarthikeyan/altiflask.git']])
+                script {
+                    def namespaces = ['BitBucket' , 'Jenkins' , 'JFrog']
+                    namespaces.each {tool ->
+                        sh "kubectl create namespace ${params.ORG_NAME}-${tool} || echo 'Namespace exists'"
+                    }
+                }
             }
         }
-        stage('Build') { 
+        
+        stage('Deploy Tools') { 
             steps {
-                git branch: 'master', url: 'https://github.com/GouthamKarthikeyan/altiflask.git'
-                sh 'python3 app.py'
+                parallel (
+                    "Deploy BitBucket" : {
+                        sh "helm install bitbucket stable/bitbucket -n ${params.ORG_NAME}-BitBucket"
+                    }
+                     "Deploy Jenkins" : {
+                        sh "helm install jenkins stable/jenkins -n ${params.ORG_NAME}-Jenkins"
+                     }
+                    "Deploy JFrog" : {
+                        sh "helm install jfrog artifactory/jfrog-platform -n ${params.ORG_NAME}-JFrog"
+                    }
+                    )
+            }
             }
         }
-        stage('Test'){
-            steps {
-                sh 'python3 -m pytest'
-            }
+    post {
+        success {
+            echo "Deployment is successfull"
+        }
+        failure {
+            echo "Deployment failed. Please check the logs"
         }
     }
 }
